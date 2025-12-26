@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Твои Зеленые Глаза</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505; /* Fondo negro profundo */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Segoe UI Light', sans-serif;
+        }
+
+        #canvas-container {
+            position: absolute;
+            z-index: 1;
+        }
+
+        /* Contenedor del mensaje */
+        .text-layer {
+            position: absolute;
+            z-index: 10;
+            bottom: 15%;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #d4fcdd; /* Verde muy pálido, casi blanco */
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(50, 205, 50, 0.6);
+            opacity: 0;
+            animation: fadeIn 4s ease-out forwards;
+            animation-delay: 2s;
+        }
+        
+        p {
+            font-size: 1.2rem;
+            color: #4caf50;
+            opacity: 0;
+            animation: fadeIn 4s ease-out forwards;
+            animation-delay: 4s;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        /* Efecto viñeta cinemática */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 30%, #000000 95%);
+            z-index: 5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="overlay"></div>
+
+    <div id="canvas-container">
+        <canvas id="eyeCanvas"></canvas>
+    </div>
+
+    <div class="text-layer">
+        <h1>Твои зеленые глаза — мой мир</h1>
+        <p>Бесконечно красивые</p>
+    </div>
+
+<script>
+    const canvas = document.getElementById('eyeCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let width, height, centerX, centerY;
+
+    // --- CONFIGURACIÓN PARA OJOS VERDES REALISTAS ---
+    const config = {
+        radius: 200,          // Tamaño del iris
+        pupilBase: 70,        // Tamaño base de la pupila
+        fiberCount: 2000,     // Cantidad de fibras (Alta para detalle elaborado)
+        // Paleta específica para ojos verdes naturales:
+        // Desde verde oscuro, pasando por esmeralda, hasta toques de miel/amarillo al centro
+        colors: [
+            '#1b5e20', // Verde bosque oscuro (fondo)
+            '#2e7d32', // Verde hoja
+            '#4caf50', // Verde estándar
+            '#81c784', // Verde claro
+            '#a5d6a7', // Verde pálido
+            '#cddc39', // Lima/Dorado (para el centro cerca de la pupila)
+            '#ffeb3b'  // Toque amarillo luz
+        ]
+    };
+
+    class IrisFiber {
+        constructor() {
+            this.angle = Math.random() * Math.PI * 2;
+            // Longitud variable de la fibra
+            this.length = Math.random() * (config.radius - config.pupilBase) + 20;
+            // Posición inicial (desde el borde de la pupila hacia afuera)
+            this.startRadius = config.pupilBase - 5; 
+            
+            // Selección de color: Las fibras cortas (cerca del centro) tienden a ser más claras/amarillentas
+            const randomVal = Math.random();
+            if (randomVal > 0.8) {
+                this.color = config.colors[5]; // Tonos dorados
+                this.length = this.length * 0.4; // Más cortas
+            } else if (randomVal > 0.5) {
+                this.color = config.colors[Math.floor(Math.random() * 3) + 2]; // Verdes medios
+            } else {
+                this.color = config.colors[Math.floor(Math.random() * 2)]; // Verdes oscuros
+            }
+
+            this.width = Math.random() * 2 + 0.5;
+            this.alpha = Math.random() * 0.5 + 0.1;
+            this.speed = Math.random() * 0.0005 + 0.0002;
+        }
+
+        update(pupilCurrentSize) {
+            this.angle += this.speed;
+            // Ajustamos el inicio de la fibra según el tamaño actual de la pupila (dilatación)
+            this.currentStart = pupilCurrentSize - 2;
+        }
+
+        draw(pupilCurrentSize) {
+            const x1 = centerX + Math.cos(this.angle) * this.currentStart;
+            const y1 = centerY + Math.sin(this.angle) * this.currentStart;
+            
+            const x2 = centerX + Math.cos(this.angle) * (this.currentStart + this.length);
+            const y2 = centerY + Math.sin(this.angle) * (this.currentStart + this.length);
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = this.width;
+            ctx.globalAlpha = this.alpha;
+            ctx.stroke();
+        }
+    }
+
+    let fibers = [];
+    let time = 0;
+
+    function init() {
+        resize();
+        for(let i=0; i<config.fiberCount; i++){
+            fibers.push(new IrisFiber());
+        }
+        animate();
+    }
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        centerX = width / 2;
+        centerY = height / 2;
+    }
+
+    function animate() {
+        // Limpieza suave
+        ctx.clearRect(0,0, width, height);
+        
+        // Simulación de respiración/latido de la pupila
+        // Usa una onda sinusoidal lenta
+        time += 0.02;
+        const pupilBreathing = Math.sin(time) * 5; 
+        const currentPupilSize = config.pupilBase + pupilBreathing;
+
+        // 1. DIBUJAR BASE DEL IRIS (Sombra circular)
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, config.radius, 0, Math.PI * 2);
+        const grad = ctx.createRadialGradient(centerX, centerY, currentPupilSize, centerX, centerY, config.radius);
+        grad.addColorStop(0, '#1a2e1a'); // Verde muy oscuro adentro
+        grad.addColorStop(1, '#051005'); // Casi negro afuera
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // 2. DIBUJAR FIBRAS (El detalle elaborado)
+        ctx.globalCompositeOperation = 'lighter'; // Hace que los verdes brillen
+        fibers.forEach(fiber => {
+            fiber.update(currentPupilSize);
+            fiber.draw(currentPupilSize);
+        });
+
+        // 3. ANILLO LIMBAL (Borde exterior oscuro del ojo)
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, config.radius, 0, Math.PI*2);
+        ctx.lineWidth = 15;
+        ctx.strokeStyle = 'rgba(0, 20, 0, 0.6)'; // Verde/Negro transparente
+        ctx.stroke();
+
+        // 4. PUPILA
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, currentPupilSize, 0, Math.PI * 2);
+        ctx.fillStyle = '#000';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#000';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // 5. REFLEJOS DE LUZ (El toque de realismo "húmedo")
+        // Reflejo grande principal
+        ctx.beginPath();
+        ctx.ellipse(centerX + currentPupilSize/2, centerY - currentPupilSize/2, 14, 9, Math.PI / 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fill();
+        
+        // Reflejo secundario pequeño
+        ctx.beginPath();
+        ctx.arc(centerX - currentPupilSize/3, centerY + currentPupilSize/3, 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fill();
+
+        requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', resize);
+    init();
+
+</script>
+</body>
+</html>
